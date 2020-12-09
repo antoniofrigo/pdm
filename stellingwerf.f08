@@ -38,7 +38,7 @@ module stellingwerf
         end if
       end do
       segments(1) = 1
-      segments(counter) = num
+      segments(counter) = num + 1
 
       deallocate(diffs)
     end subroutine

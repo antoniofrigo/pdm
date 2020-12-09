@@ -31,6 +31,7 @@ min_ind = np.argmin(theta[:,1])
 period = 1/(theta[min_ind,0])
 plt.tick_params(axis='both', labelsize=14)
 
+# A couple of plots to make sure everything worked
 plt.scatter(theta[:,0], theta[:,1])
 plt.xlabel("Frequency", fontsize=16)
 plt.ylabel("$\Theta$", fontsize=16)
@@ -44,6 +45,7 @@ plt.ylabel("Apparent Magnitude", fontsize=16)
 plt.show()
 plt.close()
 
+plt.gca().invert_yaxis()
 plt.scatter(np.mod(data[:,0],period)/period, data[:,1])
 plt.xlabel("Phase", fontsize=16)
 plt.ylabel("Apparent Magnitude", fontsize=16)

@@ -106,7 +106,7 @@ program pdm
   do j = 1, num_segs ! Segment loop
     write(*,"(A,A5,I15,A4,I15)", advance='no') creturn,"Trial",i," of ",total
     var_array_seg(1,j) = segments(j+1) - segments(j) ! Num. of pts in seg.
-    var_array_seg(2,j) = variance(y_values(segments(j):segments(j+1))) ! Var. in segment
+    var_array_seg(2,j) = variance(y_values(segments(j):segments(j+1)-1)) ! Var. in segment
   end do
   var_o = 0.0d0
   call pooled_variance_seg(var_o, var_array_seg) ! Overall variance of the set
@@ -121,8 +121,8 @@ program pdm
 
       ! Finds the variance and stores in in var_array within seg.
       call welford_modified(var_array, &
-        mod(x_values(segments(j):segments(j+1)),period)/period,&
-        y_values(segments(j):segments(j+1)),&
+        mod(x_values(segments(j):segments(j+1)-1),period)/period,&
+        y_values(segments(j):segments(j+1)-1),&
         num_bins) 
       ! Finds pooled var. of all bins
       call pooled_variance(var_p, var_array) 
@@ -152,8 +152,8 @@ program pdm
 
       ! Finds the variance and stores in in var_array within seg.
       call welford_modified(var_array, &
-        mod(x_values(segments(j):segments(j+1)),period)/period,&
-        y_values(segments(j):segments(j+1)),&
+        mod(x_values(segments(j):segments(j+1)-1),period)/period,&
+        y_values(segments(j):segments(j+1)-1),&
         num_bins) 
       ! Finds pooled var. of all bins
       call pooled_variance(var_p, var_array) 

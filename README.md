@@ -23,6 +23,13 @@ If one wishes to run it standalone, `pdm` takes four arguments:
 - `stdev_sep`: threshold for segmentation in standard deviations from the mean difference
 - `max_freq`: the maximum frequency searched
 
+For instance, to run the program for OGLE-BLG-CEP-027.dat with 10 bins, a 10 standard deviation threshold for segmentation, and a maximum frequency of 20/day, we'd run
+
+```
+make
+./pdm OGLE-BLG-CEP-027.dat 10 10 20
+```
+
 Sample output for OGLE-BLG-CEP-027: 
 ```
 Trial          14480 of           14480
