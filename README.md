@@ -12,17 +12,24 @@ Stellingwerf also showed that the spectral line width in the frequency domain of
 
 ### Compilation and Test
 
-Compile with `gfortran` using `make` and then run `./pdm`. Make sure to create a directory `MODULES/` beforehand in the same directory.
+Simply run `python3 pdm_control.py`. This'll automatically run `make` and supply the relevant command-line arguments.
+
+If one wishes to run it standalone, `pdm` takes four arguments:
+```
+./pdm data_file num_bins stdev_sep max_freq
+```
+- `data_file`: path to file containing two columns of data in ASCII format with first column of time and second magnitude
+- `num_bins`: number of bins used
+- `stdev_sep`: threshold for segmentation in standard deviations from the mean difference
+- `max_freq`: the maximum frequency searched
 
 Sample output for OGLE-BLG-CEP-027: 
 ```
- Total cases:       29640
- 
-#       Theta  Period (d)
-  1    0.159180    0.296519
-  2    0.227178    0.296578
-  3    0.350247    0.296459
- Total Time:   3.88123894    
+Trial          14480 of           14480
+Trial           2000 of            2000
+  #     Period (d)          Theta
+  1   0.2965302682   0.0453676414
+ Time elapsed:    3.31755495   
 STOP 0
 ```
 This compares nicely to the published period of `P_1 = 0.2965282`.
