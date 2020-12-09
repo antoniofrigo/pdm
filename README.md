@@ -12,7 +12,7 @@ Stellingwerf also showed that the spectral line width in the frequency domain of
 
 ### Compilation and Test
 
-Compile with `gfortran` using `make` and then run `./pdm`.
+Compile with `gfortran` using `make` and then run `./pdm`. Make sure to create a directory `MODULES/` beforehand in the same directory.
 
 Sample output for OGLE-BLG-CEP-027: 
 ```

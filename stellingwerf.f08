@@ -1,175 +1,171 @@
 module stellingwerf
   contains
-    subroutine stellingwerf_period(x_values, y_values,m,max_freq)
-      ! computes the best period using stellingwerf's algorithm
+    subroutine find_segments(observs, segments, num, stdevs)
+      ! Finds the locations of the segments
       implicit none
-      real, dimension(:) :: x_values, y_values ! input points
-      character(len=100) :: output_form
-      integer :: total
+      real(kind=kind(1.0d0)),dimension(:,:), intent(in) :: observs
+      integer,dimension(:), allocatable, intent(inout)  :: segments
 
-      integer, optional, value :: m ! num bins
-      real, optional, value    :: max_freq ! maximum_frequency
+      integer, intent(in) :: num, stdevs
 
-      real, allocatable, dimension(:,:) :: var_array
-      real, allocatable, dimension(:,:) :: sig_array
-      ! mean, mean_old, variance * (count-1), count
-      ! stores information of array_y in bins
+      real(kind=kind(1.0d0)), dimension(:), allocatable :: diffs
 
-      real :: var_o ! variance of the original array
-      real :: mean ! mean of the original array
-      real :: var_p ! variance of the bins (pooled)
-      real :: period ! guessed period
-      real :: frequency ! guessed frequency
-      real :: interval = 0! period interval, assumes x_values sorted
-      real :: msq_sum ! sum of msqs across all
-      real :: n_sum ! sum of sum(n) - sizeof(n) across all
+      real(kind=kind(1.0d0)) :: disp
+      integer                :: i, counter=1
+      allocate(diffs(num-1))
 
-      integer :: i,j  ! dummy variable
-      integer :: s = 1! dummy variable
-      integer :: test_interval ! dummy variable
-
-      ! segmentation 
-      integer, dimension(10000)          :: seg_index_o ! indices of breakpoints (with 0s)
-      integer, allocatable, dimension(:) :: seg_index ! indices of breakpoints
-      real, dimension(:), allocatable    :: diff ! difference array
-      real                               :: mean_d, msq_d ! mean difference, msq of difference
-      integer                            :: counter = 0 ! number of breakpoints
-
-      if(.not. present(m)) m = 5
-      if(.not. present(max_freq)) max_freq = 20
-
-      allocate(diff(size(x_values)-1))
-      seg_index_o = 0
-
-      do i = 1, (size(x_values) - 1)
-        diff(i) = x_values(i+1) - x_values(i)
+      ! Creates finite difference array
+      do i = 1, num-1
+        diffs(i) = observs(1,i+1) - observs(1,i)
       end do
-      
-      call welford(diff, msq_d, mean_d)
-      do i = 1, size(diff)-1, 1
-        if (diff(i).ge.(40)) then
+
+      ! Finds number of start indices
+      disp = mean(diffs) + stdevs * sqrt(variance(diffs))
+      do i = 1, num -1
+        if (diffs(i).ge.disp) then
           counter = counter + 1
-          seg_index_o(counter) = i
         end if
       end do
 
-      ! Set of break points [)
-      allocate(seg_index(count(seg_index_o/=0)))
-      seg_index = pack(seg_index_o, seg_index_o /=0)
-
-      do i = 1, size(seg_index) - 1, 1
-        if (i.eq.1) then
-          test_interval = x_values(seg_index(1)-1) - x_values(1)
-        else if (i.eq.(size(seg_index) - 1)) then
-          test_interval = x_values(size(x_values)) - x_values(seg_index(i))
-        else
-          test_interval = x_values(seg_index(i+1)-1) - x_values(seg_index(i))
-        end if
-        if (test_interval.ge.interval) then
-          interval = test_interval
+      ! Allocates memory for segment indices and sets them
+      allocate(segments(counter+1))
+      segments = 0
+      counter = 2
+      do i = 1, num-1
+        if (diffs(i).ge.disp) then
+          segments(counter) = i+1
+          counter = counter + 1
         end if
       end do
+      segments(1) = 1
+      segments(counter) = num
 
-      total = ceiling(2*interval*max_freq)
-      ! End segmentation
-
-      allocate(var_array(4,m * size(seg_index)))
-      allocate(sig_array(total,2))
-      sig_array = 1.0
-
-      call welford(y_values, var_o, mean)
-
-      write(*,*) "Total cases:", total
-      do i = 1, total ! period loop
-        do j = 1, size(seg_index)-1, 1 ! seg loop
-          var_array = 0.0
-          var_p = 0.0
-          frequency = 1/(2 * interval) * i
-          period = 1 / frequency
-          call welford_modified(var_array, &
-            mod(x_values(seg_index(j):seg_index(j+1)),period) / period, &
-            y_values(seg_index(j):seg_index(j+1)), m)
-        end do
-        call pooled_variance(var_p, var_array(3,:), var_array(4,:))
-        sig_array(i,1) = var_p / var_o
-        sig_array(i,2) = period
-      end do
-
-      output_form = "(I3, F12.6, F12.6)"
-
-      write(*,"(A3, A12, A12)") "\n#", "Theta", "Period (d)"
-      s=minloc(sig_array(:,1), 1)
-      write(*,output_form) 1, sig_array(s,1), sig_array(s,2)
-      sig_array(s,1) = 1.0
-      s=minloc(sig_array(:,1), 1)
-      write(*,output_form)2, sig_array(s,1), sig_array(s,2)
-      sig_array(s,1) = 1.0
-      s=minloc(sig_array(:,1), 1)
-      write(*,output_form) 3, sig_array(s,1), sig_array(s,2)
+      deallocate(diffs)
     end subroutine
 
-    subroutine welford_modified(var_array, array_x, array_y, m)
-      ! modified version of welford's online
-      ! algorithm to compute the variance for each bin
-      ! expects input of two arrays
+    subroutine largest_segment(max_seg, segments)
+      ! Finds largest segment
       implicit none
-      real, dimension(:) :: array_x
-      real, dimension(:) :: array_y
-      integer            :: m
+      real(kind=kind(1.0d0)), intent(inout) :: max_seg
+      integer,dimension(:), intent(in)   :: segments
 
-      integer :: i ! dummy variable
-      integer :: j ! dummy variable
+      integer :: i, max_size
 
-      real, dimension(:,:) :: var_array
-      ! mean, mean_old, variance * (count-1), count
-      ! stores information of array_y in bins
+      max_seg = 0
+      max_size = size(segments) - 1
 
-      do i = 1,size(array_y)
-        j = int(ceiling(m * array_x(i)))
+      do i = 1, max_size
+        if ((segments(i+1) - segments(i)).gt.max_seg) then
+          max_seg = segments(i+1) - segments(i)
+        end if
+      end do
+    end subroutine
+
+    real(kind=kind(1.0d0)) function mean(array)
+      implicit none
+      real(kind=kind(1.0d0)), dimension(:), intent(in) :: array
+
+      mean = 0.0d0
+      mean = sum(array)/(size(array)*1.0d0)
+      return
+    end function
+
+    real(kind=kind(1.0d0)) function variance(array)
+      ! Standard Welford implementation
+      implicit none
+      real(kind=kind(1.0d0)), dimension(:), intent(in) :: array
+
+      real(kind=kind(1.0d0)) :: msq, mu, mu_old
+
+      integer :: n, i
+      msq = 0.0d0
+      mu = 0.0d0
+      mu_old = 0.0d0
+      n = size(array)
+
+      do i = 1, n
+        mu_old = mu
+        mu = mu + array(i)
+        if (i.eq.1) cycle
+        msq = msq + (array(i) - mu_old/(i-1.0d0)) * (array(i) - mu/(1.0d0*i))
+      end do
+
+      variance = msq/( n - 1.0d0)
+    end function
+
+    subroutine welford_modified(var_array, x_val, y_val, num_bins)
+      ! Calcualtes 'variance' for each bin
+      implicit none
+      integer                                :: num_bins
+      real(kind=kind(1.0d0)), dimension(:)   :: x_val
+      real(kind=kind(1.0d0)), dimension(:)   :: y_val
+      real(kind=kind(1.0d0)), dimension(:,:) :: var_array
+
+      integer :: i, j
+
+      do i = 1,size(x_val)
+        j = int(ceiling(num_bins * x_val(i)))
         if (j.eq.0) then
           j = 1
-        else if (j.eq.6) then
-          j = 5
+        else if (j.eq.(num_bins+1)) then
+          j = num_bins
         end if
         var_array(4,j) = var_array(4,j) + 1 ! Ups count
         var_array(2,j) = var_array(1,j) ! Sets mean_old = mean
         
-        ! mean = ((count - 1) * mean_old + y)/count
-        var_array(1,j) = (var_array(4,j) - 1) * var_array(2,j) + array_y(i)
-        var_array(1,j) = var_array(1,j) / var_array(4,j)
+        var_array(1,j) = var_array(2,j) + y_val(i)
 
         ! msq = msq + (y - mean)(y - mean_old)
-        var_array(3,j) = var_array(3,j) + &
-          (array_y(i) - var_array(1,j)) * (array_y(i) - var_array(2,j))
+        if (var_array(4,j).eq.1.0) then
+          var_array(3,j) = 0.0
+        else
+          var_array(3,j) = var_array(3,j) + &
+            (y_val(i) - var_array(1,j)/var_array(4,j)) * &
+            (y_val(i) - var_array(2,j)/(var_array(4,j) - 1))
+        end if
       end do
     end subroutine
 
-    subroutine welford(array, var_o, mean)
-      ! computes variance of an array using welford's method
-      ! in the standard way
+    subroutine pooled_variance(var_p, var_array)
+      ! Calculates pooled variance
       implicit none
-      real, dimension(:) :: array
-      integer            :: i
-      real               :: var_o
+      real(kind=kind(1.0d0)), dimension(:,:), intent(in) :: var_array
+      real(kind=kind(1.0d0)), intent (inout)             :: var_p
+      var_p = sum(var_array(3,:))/(sum(var_array(4,:)) - size(var_array(4,:)))
+    end subroutine
 
-      real :: mean, mean_old
-      real :: msq
+    subroutine pooled_variance_seg(var_p, var_array_seg)
+      ! Calculates pooled variance
+      implicit none
+      real(kind=kind(1.0d0)), dimension(:,:), intent(in) :: var_array_seg
+      real(kind=kind(1.0d0)), intent (inout)             :: var_p
+      var_p = sum(var_array_seg(2,:))/(sum(var_array_seg(1,:)) - &
+        size(var_array_seg(1,:)))
+    end subroutine
 
-      do i = 1, size(array)
-        mean_old = mean
-        mean = (( i - 1.0 ) * mean_old + array(i))/i
-        msq = msq + (array(i) - mean) * (array(i) - mean_old)
+
+    subroutine output_results(theta, observs, output_file, total)
+      ! Outputs results to console and to file
+      implicit none
+      character(len=100)                                 :: output_file
+      character(len=100)                                 :: fmt1
+      integer, intent(in)                                :: total
+      real(kind=kind(1.0d0)), dimension(:,:), intent(in) :: theta
+      real(kind=kind(1.0d0)), dimension(:,:), intent(in) :: observs
+
+      integer :: LUN, i
+      integer :: k1, k2, k3
+
+      fmt1 = "(I3, F15.10, F15.10)"
+      write(*,"(A3, A15, A15)") "  #", "Period (d)", "Theta"
+      k1 = minloc(theta(2,:),1)
+      write(*,fmt1) 1, theta(1,k1), theta(2,k1)
+
+      open(newunit=LUN, file = output_file)
+      do i = 1, size(theta(1,:))
+        write(LUN,*) 1.0d0/theta(1,i), theta(2,i)
       end do
-      var_o = msq / (size(array) - 1.0)
+      close(unit=LUN)
     end subroutine
 
-    subroutine pooled_variance(var_p, msq_array, counts)
-      ! computes pooled variance of all the segments
-      implicit none
-      real, dimension(:) :: msq_array ! array of (x- mean)^2 values per bin
-      real, dimension(:) :: counts ! counts per bin
-      real               :: var_p
-
-      var_p = real(sum(msq_array))/real((sum(counts) - size(counts)))
-    end subroutine
 end module
