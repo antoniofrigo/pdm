@@ -10,6 +10,8 @@ It's very unlikely that a variable star (such as a Cepheid) would be observed co
 
 Stellingwerf also showed that the spectral line width in the frequency domain of the true period is 1/(2T) where T is the size of the interval in time. In order to accelerate our computations, we segment the data beforehand, Stellingwerf's method over these individual segments, and then use all of those variances to compute the pooled variance overall. Variances are calculated in one pass with Welford's algorithm.
 
+A full explanation with example output can be found at [https://antoniofrigo.github.io/pages/pdm.html]{https://antoniofrigo.github.io/pages/pdm.html}.
+
 ### Compilation and Test
 
 Simply run `python3 pdm_control.py`. This'll automatically run `make` and supply the relevant command-line arguments.
